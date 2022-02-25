@@ -1,0 +1,18 @@
+---
+title: "Assignment04"
+author: "Name - nhs40"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+![git remote -v Image](/Users/nathanielhugospilka/Desktop/GU_3Spring2022/DataSci/Assignments/assignment04/sshQ1.png)
+
+
+
+
+
