@@ -1,0 +1,194 @@
+---
+title: "Assignment04"
+author: "Nathaniel Spilka (nhs40)"
+output: html_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r include = FALSE}
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\n \\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+
+```
+
+
+# ________________________________________
+
+
+# PPOL 670 | Assignment 4
+
+# Data Visualization, Markdown, and Git
+
+# ________________________________________
+
+Data are from [hyperlink](https://www.atusdata.org/atus/) 
+
+## title 2
+
+### title 3
+
+
+
+```{r - setup}
+#set wd
+setwd("~/Desktop/GU_3Spring2022/DataSci/Assignments/assignment04")
+
+#Load in Libraries
+library(haven)
+library(tidyverse)
+library(ipumsr)
+library(srvyr)
+
+#Load in data
+ddi <- read_ipums_ddi("data/atus_00002.xml")
+data <- read_ipums_micro(ddi)
+
+```
+
+
+
+```{r}
+#Organize/clean data
+
+atusSurvey <- data %>%
+  as_survey_design(weights = WT06)
+
+#Create new and improved variables
+atusSurveySubSet <- atusSurvey %>%
+  mutate(
+    married = case_when(
+      MARST == 1 | MARST == 2 ~ 1,
+      MARST == 4 | MARST == 5 ~ 0,
+      MARST == 6 ~ 2),
+    edu = case_when(
+      EDUC == 021 ~ 0,
+      EDUC == 040 ~ 1),
+    # ,
+    #   EDUC == 041 ~ 2,
+    #   EDUC == 042 ~ 3,
+    #   EDUC == 043 ~ 4),
+    employed = case_when(
+      EMPSTAT == 1 | EMPSTAT == 2 ~ 1,
+      EMPSTAT == 3 | EMPSTAT == 4 ~ 0),
+    wbh = case_when(
+      RACE == 100 & HISPAN == 100 ~ 0,
+      RACE == 110 ~ 1,
+      HISPAN != 100 & HISPAN < 251 ~ 2)
+  )
+
+#clean some data - will add more
+atusSurveySubSet <- atusSurveySubSet %>%
+  filter(AGE < 122)
+
+data2 <- atusSurveySubSet$variables
+
+unEmployed0709 <- atusSurveySubSet %>%
+  filter(YEAR == 2007 | YEAR == 2009, !is.na(employed),!is.na(edu),!is.na(wbh), wbh == 2)
+
+data3 <- unEmployed0709$variables
+
+
+```
+
+
+
+
+
+```{r}
+
+#it looks like unemployment is higher than online values
+unEmployed <- atusSurveySubSet %>%
+  filter(!is.na(employed)) %>%
+  group_by(YEAR, employed) %>%
+  summarize(unEmpProp = survey_prop()) %>%
+  filter(employed == 0) %>%
+  ungroup()
+
+#unemployment rate for 2007 and 2009 segmented by race and education
+unEmployed0709 <- atusSurveySubSet %>%
+  filter(YEAR == 2007 | YEAR == 2009, !is.na(employed),!is.na(edu),!is.na(wbh)) %>%
+  group_by(YEAR, edu, wbh, employed) %>%
+  summarize(
+    total = survey_prop()) %>%
+  filter(employed == 0) %>%
+  ungroup()
+
+#Making the subtraction easier by making date-proportion columns
+unEmployed0709Wide <- unEmployed0709 %>%
+  pivot_wider(
+    names_from = "YEAR",
+    values_from = c("total", "total_se")
+  )
+
+#finding percent change from 2007 to 2009
+unEmployed0709WidePC <- unEmployed0709Wide %>%
+  mutate(
+    prcntChnge = (total_2009 - total_2007)
+  )
+
+#Changing the appropriate variables to factors (edu and wbh)
+unEmployed0709WidePC <-   unEmployed0709WidePC %>%
+  mutate(
+    edu = factor(edu),
+    wbh = factor(wbh)
+  )
+
+unEmployed0709WidePC %>%
+  mutate(
+    edu = factor(edu, labels = c("High School Diploma", "Bachelor's Degree")),
+    wbh = factor(wbh, labels = c("White", "Black", "Hispanic"))) %>%
+  group_by(wbh) %>%
+  ggplot(mapping = aes(x = edu, y = prcntChnge, fill = factor(wbh))) +
+  geom_col(position = "dodge")+
+  geom_text(mapping = aes(label = scales::percent(round(prcntChnge, digits = 2))), 
+            position = position_dodge(width = 0.7), vjust = -1) +    
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.1)), 
+                     labels = scales::percent_format(scale = 100)) +
+  ggtitle("Percent Increase in Unemployment After 2008 Financial Crisis (2007-2009)") +
+  xlab("Education Level") +
+  ylab("Percent Change") +
+  labs(fill = NULL) +
+  scale_fill_manual(values=c("#cd5c5c", "#5c5ccd", "#5ccd5c")) +
+  theme_minimal()
+
+```
+
+
+
+
+```{r}
+
+
+
+
+```
+
+
+```{r}
+
+
+
+
+```
+
+```{r}
+
+
+
+
+```
+
+```{r}
+
+
+
+
+```
