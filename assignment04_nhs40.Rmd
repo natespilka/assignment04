@@ -18,54 +18,47 @@ knitr::knit_hooks$set(chunk = function(x, options) {
 })
 
 ```
+# _________________________________________________
 
+# PPOL 670 | Data Visualization, Markdown, and Git
 
-# ________________________________________
+## Learning about the 2008 financial crisis with r
 
+The following figures illustrate whether/how the The Great Recession impacted the US. Specifically, this document investigates the relationship between the financial crisis and several factors such as race, education, employment, marital status, and childcare. Data are from a customized ATUS data [extract](https://github.com/natespilka/assignment04/tree/main/data). 
 
-# PPOL 670 | Assignment 4
+Also, I apologize if the figure colors are weird. I'm color blind. 
 
-# Data Visualization, Markdown, and Git
-
-# ________________________________________
-
-Data are from [hyperlink](https://www.atusdata.org/atus/) 
-
-## title 2
-
-### title 3
-
-
+### The following loads in libraries and data:
 
 ```{r - setup}
-#set wd
-setwd("~/Desktop/GU_3Spring2022/DataSci/Assignments/assignment04")
-
-#Load in Libraries
+#load in libraries
 library(haven)
 library(tidyverse)
 library(ipumsr)
 library(srvyr)
 
-#Load in data
+#load in data
 ddi <- read_ipums_ddi("data/atus_00002.xml")
 data <- read_ipums_micro(ddi)
-
 ```
 
-
+### The following creates variables and cleans the data set:
 
 ```{r}
-#Organize/clean data
+#maintaining the same set of colors for all figures
+color1 <- "#ab418f"
+color2 <- "#418fab"
+color3 <- "#8fab41"
+color4 <- "#cd0066"
+color5 <- "#70b1c9"
+color6 <- "#b7960e"
+color7 <- "#d3d3d3"
 
-color1 <- "#cd5c5c"
-color2 <- "#5c5ccd"
-color3 <- "#5ccd5c"
-
+#setting appropriate weights
 atusSurvey <- data %>%
   as_survey_design(weights = WT06)
 
-#Create new and improved variables
+#creating new and improved variables. Anything higher than a bachelor's degree is omitted due to loss of data across demographics.
 atusSurveySubSet <- atusSurvey %>%
   mutate(
     married = case_when(
@@ -75,7 +68,6 @@ atusSurveySubSet <- atusSurvey %>%
     edu = case_when(
       EDUC == 021 ~ 0,
       EDUC == 040 ~ 1),
-    # ,
     #   EDUC == 041 ~ 2,
     #   EDUC == 042 ~ 3,
     #   EDUC == 043 ~ 4),
@@ -86,25 +78,24 @@ atusSurveySubSet <- atusSurvey %>%
       RACE == 100 & HISPAN == 100 ~ 0,
       RACE == 110 ~ 1,
       HISPAN != 100 & HISPAN < 251 ~ 2),
-    weeklyEarn = ifelse(EARNWEEK == 99999.99, NA, EARNWEEK)
+    weeklyEarn = ifelse(EARNWEEK == 99999.99, NA, EARNWEEK),
+    chldCare = ifelse(SCC_ALL == 0, NA, SCC_ALL)
   )
 
-#clean some data - will add more
-#Only considering people of legal marrying age (<18yos in ATUS are coded as "Never Married") and not older than the oldest person 
+#only considering legal adults and people younger than the oldest person ever
 atusSurveySubSet <- atusSurveySubSet %>%
   filter(AGE < 122, AGE > 17)
 
+#i like seeing rectangular data
 data2 <- atusSurveySubSet$variables
 
 ```
+# _________________________________________________
 
+### The following organizes data and creates a figure to understand the percent increase in unemployment from 2007-2009 (by race and educational background):
 
-
-
-
+Although the historical trend is the same, the unemployment values are higher than what is found [online](https://data.bls.gov/timeseries/LNU04000000?periods=Annual+Data&periods_option=specific_periods&years_option=all_years). 
 ```{r}
-
-#it looks like unemployment is higher than online values
 unEmployed <- atusSurveySubSet %>%
   filter(!is.na(employed)) %>%
   group_by(YEAR, employed) %>%
@@ -112,7 +103,7 @@ unEmployed <- atusSurveySubSet %>%
   filter(employed == 0) %>%
   ungroup()
 
-#unemployment rate for 2007 and 2009 segmented by race and education
+#unemployment rates for 2007 and 2009 segmented by race and education
 unEmployed0709 <- atusSurveySubSet %>%
   filter(YEAR == 2007 | YEAR == 2009, !is.na(employed),!is.na(edu),!is.na(wbh)) %>%
   group_by(YEAR, edu, wbh, employed) %>%
@@ -121,106 +112,79 @@ unEmployed0709 <- atusSurveySubSet %>%
   filter(employed == 0) %>%
   ungroup()
 
-#Making the subtraction easier by making date-proportion columns
+#creating date-proportion columns to make the subtraction easier
 unEmployed0709Wide <- unEmployed0709 %>%
   pivot_wider(
     names_from = "YEAR",
     values_from = c("total", "total_se")
   )
 
-#finding percent change from 2007 to 2009
+#finding percent change in unemployment from 2007 to 2009
 unEmployed0709WidePC <- unEmployed0709Wide %>%
   mutate(
     prcntChnge = (total_2009 - total_2007)
   )
 
-#Changing the appropriate variables to factors (edu and wbh)
+#changing the appropriate variables to factors (edu and wbh) before running ggplot
 unEmployed0709WidePC %>%
   mutate(
     edu = factor(edu, labels = c("High School Diploma", "Bachelor's Degree")),
     wbh = factor(wbh, labels = c("White", "Black", "Hispanic"))) %>%
   group_by(wbh) %>%
-  ggplot(mapping = aes(x = edu, y = prcntChnge, fill = factor(wbh))) +
-  geom_col(position = "dodge")+
+  ggplot(mapping = aes(x = edu, y = prcntChnge, fill = wbh)) +
+  geom_col(position = "dodge") +
   geom_text(mapping = aes(label = scales::percent(round(prcntChnge, digits = 3))), 
             position = position_dodge(width = 0.9), vjust = -1) +    
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.1)),
                      breaks = c(0.03, 0.06, 0.09),
                      labels = scales::percent_format(scale = 100)) +
-  ggtitle("Percent Increase in Unemployment After 2008 Financial Crisis (2007-2009)") +
+  ggtitle("Percent increase in unemployment after 2008 financial frisis (from 2007 to 2009)") +
   xlab(NULL) +
   ylab(NULL) +
   labs(fill = NULL) +
-  scale_fill_manual(values=c(color1, color2, color3)) +
+  scale_fill_manual(values = c(color1, color2, color3)) +
   theme(panel.background = element_blank(), 
   panel.grid.major = element_line(color = "black", size = 0.1),
   panel.grid.major.x = element_blank(),
-  axis.ticks = element_blank())
-
-```
-
-```{r}
-
-mrydOvrTme <- atusSurveySubSet %>%
-  filter(!is.na(married)) %>%
-  group_by(YEAR, married) %>%
-  summarize(
-    total = survey_prop()) %>%
-  ungroup()
-
-
-#Changing the appropriate variables to factors (married)
-mrydOvrTme <- mrydOvrTme %>%
-  mutate(
-    married = factor(married, labels = c("Divorced/Separated", "Married", "Naver Married"))
+  axis.ticks = element_blank(),
+  axis.text=element_text(size = 10),
+  legend.text=element_text(size = 10),
+  legend.position = c(.94, 0.85)
   )
 
-
-mrydOvrTme %>%
-  group_by(married, YEAR) %>%
-  ggplot(aes(x = YEAR, y = total, fill = married)) +
-  geom_area(position = "fill") +
-  scale_x_continuous(expand = expand_scale(mult = c(0, 0)),
-                     limits = c(2003, 2017),
-                     breaks = c(2004:2016)) +  
-  scale_y_continuous(expand = expand_scale(mult = c(0, 0)),
-                     breaks = c(0.25, 0.5, 0.75, 1),
-                     labels = scales::percent) +
-  ggtitle("Marital Status (2004-2016): did the 2008 financial crisis have an impact?") +
-  xlab(NULL) +
-  ylab(NULL) +
-  labs(fill = NULL) +
-  scale_fill_manual(values=c(color1, color2, color3)) +
-  theme(panel.background = element_blank(), 
-  panel.grid.major = element_line(color = "black", size = 0.1),
-  panel.grid.major.x = element_blank(),
-  axis.ticks = element_blank()) +
-  geom_vline(xintercept = 2008, linetype="dashed", 
-                color = "white", size=1)
-
 ```
 
+In addition to education, race is a particularly strong predictor of unemployment during economic downturn. Reflecting on the 2008 recession, research has pointed to several mechanisms associated with the differing increases in unemployment rates between races (e.g., [psychological]( https://www.pnas.org/content/111/25/9079), [initial economic security](https://www.cbpp.org/research/poverty-and-inequality/economic-security-programs-reduce-overall-poverty-racial-and-ethnic), and [employment type]( https://www.bls.gov/opub/reports/race-and-ethnicity/2018/home.htm#:~:text=The%20employment%E2%80%93population%20ratio%20was,and%2063.2%20percent%20for%20Hispanics.)). Investing in stronger public education, [family care]( https://publications.aap.org/pediatrics/article-abstract/114/1/169/64730/Special-Supplemental-Nutrition-Program-for-Women?redirectedFrom=fulltext), [early life initiatives]( https://onlinelibrary.wiley.com/doi/10.1111/j.1541-0072.2005.00092.x), and [tax credit programs](https://openscholarship.wustl.edu/spi_research/56/) are all ways to help reduce disparate outcomes. 
 
-```{r}
+# _________________________________________________
 
+### The following organizes data and creates a figure to understand whether/how median weeky earnings were noticably impacted by the 2008 financial crisis:
+
+```{r fig.width = 10}
+#median weekly earnings by race and education over time
 medWeekEarnings <- atusSurveySubSet %>%
   filter(!is.na(weeklyEarn),!is.na(edu),!is.na(wbh)) %>%
   group_by(YEAR, edu, wbh) %>%
   summarize(
-    total = survey_median(weeklyEarn)) %>%
+    totalMedian = survey_median(weeklyEarn),
+    totalMean = survey_mean(weeklyEarn)) %>%
   ungroup()
 
-medWeekEarnings2 <- medWeekEarnings %>%
+#setting education and race as a factor - and combining them for the figure below
+medWeekEarnings <- medWeekEarnings %>%
   mutate(
     edu = factor(edu, labels = c("High School Diploma", "Bachelor's Degree")),
     wbh = factor(wbh, labels = c("White", "Black", "Hispanic")),
     combined = paste(wbh,", ",edu)
   )
 
-medWeekEarnings2 %>%
+#a bachelor's degree can help
+medWeekEarnings %>%
   group_by(combined) %>%
-  ggplot(mapping = aes(x = YEAR, y = total, color = combined))+
-  geom_line(size = 1)+
+  ggplot(mapping = aes(x = YEAR, y = totalMedian, color = combined)) +
+  geom_vline(xintercept = 2008.25, 
+                color = color7, size = 25, alpha = 0.6) +
+  geom_line(size = 1.5) +
   scale_x_continuous(expand = expand_scale(mult = c(0.002, 0)), 
                      breaks = c(2004 + 0:12),
                      limits = c(2004, 2016)) +
@@ -228,30 +192,152 @@ medWeekEarnings2 %>%
                      breaks = 0:5 * 200,
                      labels = scales::dollar, 
                      limits = c(350, 1050)) +
-  ggtitle("Median weekly earnings (US dollars): before/after the 2008 financial crisis ") +
+  ggtitle("Median weekly earnings (US dollars) before/after the 2008 financial crisis ") +
   labs(x = NULL,
        y = NULL) +
+  scale_color_manual(values = c(color2, color5, color3, color6, color1, color4)) +
   theme(panel.background = element_blank(), 
   panel.grid.major = element_line(color = "black", size = 0.1),
   panel.grid.major.x = element_blank(),
   axis.ticks = element_blank(),
   legend.title= element_blank(),
-  axis.line.x.bottom=element_line(size=.5, color = "grey")) +
-  geom_vline(xintercept = 2008, linetype="dashed", 
-                color = "black", size=.75)
-
-```
-
-```{r}
-
-
+  axis.line.x.bottom=element_line(size = 0.5, color = "grey"),
+  legend.key = element_rect(fill = "transparent"),
+  axis.text=element_text(size = 10),
+  plot.title = element_text(size = 17),
+  legend.text=element_text(size = 10),
+  legend.justification = "top"
+  ) 
 
 
 ```
 
-```{r}
+All groups in the figure experience a simultaneous decrease in weekly median wage during the Great Recession except for white individuals with a bachelor’s degree. Better understanding and modifying various [organizational]( https://journals.aom.org/doi/10.5465/annals.2017.0033) practices (e.g., hiring, role allocation, promotion, and compensation) can help improve opportunity and mitigate disparities. Additionally, the figure shows a consistent trending increase in median pay overtime for those with a high school diploma. In part, this may be a result of the increasing minimum wage in various states and companies (e.g., Whole Foods and Amazon).
 
+# _________________________________________________
 
+### The following organizes data and creates a figure to understand whether the 2008 financial crisis had a noticable impact on marital status (2004-2016):
 
+```{r fig.width = 12}
+#proportion of Divorced/Separated, Married, and Never Married peoples in the US. (looking at all people older than 18)
+mrydOvrTme <- atusSurveySubSet %>%
+  filter(!is.na(married), AGE > 22) %>%
+  group_by(YEAR, edu, married) %>%
+  summarize(
+    total = survey_prop()) %>%
+  ungroup()
+
+#changing the married variable to a factor
+mrydOvrTme <- mrydOvrTme %>%
+  filter(!is.na(edu)) %>%
+  mutate(
+    married = factor(married, labels = c("Divorced/Separated", "Married", "Never Married")),
+    edu = factor(edu, labels = c("High School Diploma", "Bachelor's Degree"))
+  )
+
+#geom_area is cool sometimes
+mrydOvrTme %>%
+  group_by(married, YEAR) %>%
+  ggplot(aes(x = YEAR, y = total, fill = married)) +
+  geom_area(position = "fill") +
+  geom_vline(xintercept = 2008.3, 
+             color = color7, size = 20, alpha = 0.6) +
+  scale_x_continuous(expand = expand_scale(mult = c(0, 0)),
+                     limits = c(2004, 2016),
+                     breaks = c(2004:2016)) +  
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0)),
+                     breaks = c(0, 0.25, 0.5, 0.75, 1),
+                     labels = scales::percent) +
+  ggtitle("Marital Status (2004-2016): did the 2008 financial crisis have an impact?") +
+  xlab(NULL) +
+  ylab(NULL) +
+  labs(fill = NULL) +
+  facet_grid(. ~ edu) +
+  scale_fill_manual(values = c(color1, color2, color3)) +
+  theme(panel.background = element_blank(), 
+  panel.grid.major = element_line(color = "black", size = 0.1),
+  panel.grid.major.x = element_blank(),
+  axis.text.x = element_text(angle = 90),
+  strip.background = element_blank(),
+  panel.spacing = unit(2, "lines"),
+  axis.ticks = element_blank(),
+  axis.text=element_text(size = 10),
+  plot.title = element_text(size = 20, hjust = .5),
+  legend.text=element_text(size = 11),
+  strip.text.x = element_text(size = 12.5),
+  legend.justification = "top"
+  ) 
 
 ```
+
+From the figure alone, marital status does not seem to be noticeably impacted by the 2008 recession. A [working paper](link) suggests that any association is speculative at best. However, not only is the proportion of those married decreasing over time, but the divorce rate among those with only a high school diploma is noticeably higher compared to those with a bachelor’s degree. This effect is consistent with [prior research]( https://www.aeaweb.org/articles?id=10.1257/jep.30.2.79). The [Brookings Institute]( https://www.brookings.edu/research/middle-class-marriage-is-declining-and-likely-deepening-inequality/) suggests that this effect may be due to premature marriage among individuals of middle to lower socio-economic status. The previous figure corroborates a median income gap between those with only a high school diploma and those with a bachelor's degree. The Brookings Institute suggests investing in better access to the following can help avoid many issues from the increasing divorce/separation rate: better access to (a) contraception, (b) secondary education (e.g., university or trade school), and (c) family leave. 
+
+# _________________________________________________
+
+### The following organizes data and creates a figure to understand whether/how the 2008 financial crisis had an impact on daily "secondary" childcare time (2004-2016):
+
+```{r fig.width = 10}
+#hrsMin holds the hours:minutes of daily time childcare time - didn't end up using this because it didn't look good on the figure
+meanChildCare <- atusSurveySubSet %>%
+  filter(!is.na(chldCare), !is.na(wbh)) %>%
+  group_by(YEAR, wbh) %>%
+  summarize(
+    hrsNum = survey_mean(chldCare)/60,
+    hrs = survey_mean(chldCare)%/%60,
+    mnts = (hrsNum%%1)*60,
+    hrsMin = hrs+(mnts/100),
+    n = unweighted((n()))) %>%
+  ungroup()
+
+#converting the race variable to a factor for easy use in the figure
+meanChildCare <- meanChildCare %>%
+  mutate(
+    wbh = factor(wbh, labels = c("White", "Black", "Hispanic"))
+    )
+
+#parental indirect childcare decreased over time. did the 2008 crisis have an effect? can't say from this figure alone.
+meanChildCare %>%
+  ggplot(mapping = aes(x = YEAR, y = hrsNum, color = wbh)) +
+  geom_vline(xintercept = 2008.3, 
+                color = color7, size = 28, alpha = 0.5) +
+  geom_line(size = 1.5) +
+  geom_point(size = 2.5) +
+ scale_x_continuous(expand = expand_scale(mult = c(0, 0)),
+                     limits = c(2003.5, 2016.5),
+                     breaks = c(2004:2016)) +  
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)),
+                     limits = c(5, 7.5)) +
+  ggtitle("Average daily secondary childcare time by race (2004-2016)") +
+  xlab(NULL) +
+  ylab("Hours") +
+  labs(fill = NULL) +
+  scale_fill_manual(values=c(color1, color2, color3)) +
+  theme(panel.background = element_blank(), 
+  panel.grid.major = element_line(color = "black", size = 0.1),
+  panel.grid.major.x = element_blank(),
+  axis.ticks = element_blank(),
+  legend.title = element_blank(),
+  axis.line.x.bottom = element_line(size = 0.5, color = "grey"),
+  legend.key = element_rect(fill = "transparent"),
+  plot.title = element_text(hjust = .5, size = 20, margin = margin(0,0,20,0)),
+  axis.text=element_text(size = 10),
+  axis.title.y = element_text(size = 15),
+  legend.text = element_text(size = 12), 
+  strip.background = element_blank(),
+  legend.position = c(.94, 0.86)
+)
+
+```
+
+"Secondary childcare" is characterized by the ATUS as indirect time spent with one’s child who is younger than 13 years old (e.g., a parent cooking while their child plays nearby). This time does not include direct engagement with the child (e.g., playing and feeding) or usual sleeping hours. Aside from the trending ~30-minute decrease for white parents, it is difficult to make conclusions about the potential impact of the 2008 crisis on time allocated to secondary childcare. However, the figure suggests that parents are trending toward becoming less "indirectly" engaged with their child. This may be due to increased usage of childcare services as they have become more accessible over the years (e.g., universal pre-k, Head Start, and Early Head Start programs). However, [research](https://link.springer.com/chapter/10.1057/9781137381446_8) points to an important caveat when using the “secondary childcare” variable. Specifically, reports are thought to be overestimated by ~16 minutes.
+
+
+
+
+
+
+
+
+
+
+.
