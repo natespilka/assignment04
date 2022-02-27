@@ -138,7 +138,7 @@ unEmployed0709WidePC %>%
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.1)),
                      breaks = c(0.03, 0.06, 0.09),
                      labels = scales::percent_format(scale = 100)) +
-  ggtitle("Percent increase in unemployment after 2008 financial frisis (from 2007 to 2009)") +
+  ggtitle("Percent increase in unemployment from 2007 to 2009") +
   xlab(NULL) +
   ylab(NULL) +
   labs(fill = NULL) +
@@ -149,6 +149,7 @@ unEmployed0709WidePC %>%
   axis.ticks = element_blank(),
   axis.text=element_text(size = 10),
   legend.text=element_text(size = 10),
+  plot.title = element_text(size = 15, hjust = .5),
   legend.position = c(.94, 0.85)
   )
 
@@ -192,7 +193,7 @@ medWeekEarnings %>%
                      breaks = 0:5 * 200,
                      labels = scales::dollar, 
                      limits = c(350, 1050)) +
-  ggtitle("Median weekly earnings (US dollars) before/after the 2008 financial crisis ") +
+  ggtitle("Median weekly earnings (US dollars) from 2004 to 2016") +
   labs(x = NULL,
        y = NULL) +
   scale_color_manual(values = c(color2, color5, color3, color6, color1, color4)) +
@@ -204,7 +205,7 @@ medWeekEarnings %>%
   axis.line.x.bottom=element_line(size = 0.5, color = "grey"),
   legend.key = element_rect(fill = "transparent"),
   axis.text=element_text(size = 10),
-  plot.title = element_text(size = 17),
+  plot.title = element_text(size = 17, hjust = .5),
   legend.text=element_text(size = 10),
   legend.justification = "top"
   ) 
@@ -307,7 +308,7 @@ meanChildCare %>%
                      breaks = c(2004:2016)) +  
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)),
                      limits = c(5, 7.5)) +
-  ggtitle("Average daily secondary childcare time by race (2004-2016)") +
+  ggtitle("Average daily secondary childcare time (2004-2016)") +
   xlab(NULL) +
   ylab("Hours") +
   labs(fill = NULL) +
@@ -336,3 +337,7 @@ meanChildCare %>%
 
 
 
+
+
+
+![git remote -v Image](/Users/nathanielhugospilka/Desktop/GU_3Spring2022/DataSci/Assignments/assignment04/sshQ1.png)
